@@ -677,7 +677,7 @@
 </div>
 </div>
 <script>
-  var WEBHOOK_URL="{{LEAD_WEBHOOK_URL}}", VSL_URL="{{VSL_URL}}", WEBINAR_ISO="2026-10-11T09:00:00+05:30";
+  var DESK_URL='https://deskbackend.getnos.io/v1/lead', DESK_API_KEY='lh_htJEz4grtRUpyRanExW42VH288sHhS28DpEF1BSTCmY', VSL_URL="{{VSL_URL}}", WEBINAR_ISO="2026-10-11T09:00:00+05:30";
   var ovl=document.getElementById('ovl'),formView=document.getElementById('formView'),successView=document.getElementById('successView');
   var autoShown=false,dismissed=false;
   function openModal(){ovl.classList.add('open');ovl.setAttribute('aria-hidden','false');var n=document.getElementById('f-name');if(n)n.focus();}
@@ -701,8 +701,19 @@
   var vf=document.getElementById('vslFrame');
   if(vf){vf.addEventListener('click',function(){if(VSL_URL&&VSL_URL.indexOf('{{')!==0){vf.innerHTML='<iframe src="'+VSL_URL+'" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>';}});}
   var THANKYOU_URL='thank-you.html';
-  function fireLead(p){try{fetch(WEBHOOK_URL,{method:'POST',mode:'no-cors',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});}catch(e){}try{if(navigator.sendBeacon){navigator.sendBeacon(WEBHOOK_URL,new Blob([JSON.stringify(p)],{type:'application/json'}));}}catch(e){}}
-  document.getElementById('submitBtn').addEventListener('click',function(){var name=document.getElementById('f-name').value.trim(),mail=document.getElementById('f-mail').value.trim(),wa=document.getElementById('f-wa').value.trim(),city=document.getElementById('f-city').value.trim(),err=document.getElementById('err');var mailOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail),waOk=wa.replace(/\D/g,'').length>=8;if(!name||!mailOk||!waOk){err.style.display='block';return;}err.style.display='none';dismissed=true;fireLead({name:name,email:mail,whatsapp:wa,city:city,session:'Sri Bhashyam Session',ts:new Date().toISOString(),page:location.href});formView.style.display='none';successView.style.display='block';setTimeout(function(){location.href=THANKYOU_URL+'?name='+encodeURIComponent(name);},450);});
+  var submitting=false;
+  async function submitLead(fields){
+    if(submitting)return {duplicate:true,skipped:true};
+    submitting=true;
+    try{
+      var res=await fetch(DESK_URL,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+DESK_API_KEY},body:JSON.stringify(Object.assign({form:'contact',honeypot:'',subject:'Ramanuja Vidya - Tamil Leads'},fields)),keepalive:true});
+      var data={};try{data=await res.json();}catch(e){}
+      if(data.duplicate)return data;
+      if(!res.ok)throw new Error(data.message||'Lead submit failed ('+res.status+')');
+      return data;
+    }finally{submitting=false;}
+  }
+  document.getElementById('submitBtn').addEventListener('click',async function(){var btn=this,name=document.getElementById('f-name').value.trim(),mail=document.getElementById('f-mail').value.trim(),wa=document.getElementById('f-wa').value.trim(),city=document.getElementById('f-city').value.trim(),err=document.getElementById('err');var mailOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail),waOk=wa.replace(/\D/g,'').length>=8;if(!name||!mailOk||!waOk){err.style.display='block';return;}err.style.display='none';btn.disabled=true;try{await submitLead({name:name,email:mail,whatsapp:wa,phone:wa,city:city,session:'Sri Bhashyam Session',source:'Ramanuja Vidya Tamil Landing Page',ts:new Date().toISOString(),page:location.href});dismissed=true;formView.style.display='none';successView.style.display='block';setTimeout(function(){location.href=THANKYOU_URL+'?name='+encodeURIComponent(name);},450);}catch(e){err.textContent='உங்கள் பதிவை இப்போது சமர்ப்பிக்க முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.';err.style.display='block';btn.disabled=false;}});
   function pad(n){return(n<10?'0':'')+n;}
   function tick(){var t=Date.parse(WEBINAR_ISO),groups=[document.getElementById('cd'),document.getElementById('cd3')];if(isNaN(t)){return;}var diff=t-Date.now();if(diff<0)diff=0;var d=Math.floor(diff/86400000),h=Math.floor(diff%86400000/3600000),m=Math.floor(diff%3600000/60000),s=Math.floor(diff%60000/1000);groups.forEach(function(g){if(!g)return;g.querySelector('[data-d]').textContent=d;g.querySelector('[data-h]').textContent=pad(h);g.querySelector('[data-m]').textContent=pad(m);g.querySelector('[data-s]').textContent=pad(s);});}
   tick();setInterval(tick,1000);
